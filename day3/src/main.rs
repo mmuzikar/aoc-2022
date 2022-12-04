@@ -30,10 +30,6 @@ impl<'a> From<(&'a str, &'a str, &'a str)> for Rucksack<'a> {
     }
 }
 
-impl <'a> Rucksack<'a> {
-    
-}
-
 fn get_item_priority(items: &Vec<Item>) -> u32 {
     items.iter().map(Item::priority).sum()
 }
