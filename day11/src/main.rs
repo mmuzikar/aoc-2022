@@ -1,11 +1,10 @@
-use std::{cell::RefCell};
+use std::cell::RefCell;
 
 use iter_tools::Itertools;
-use num_bigint::BigInt;
 
 struct Monkey {
     id: usize,
-    items: Vec<BigInt>,
+    items: Vec<i64>,
     inspections: i64,
     operation: Operation,
     test: i64,
@@ -14,19 +13,19 @@ struct Monkey {
 }
 
 struct Operation {
-    op: Box<dyn FnMut(BigInt, BigInt) -> BigInt>,
-    arg: Option<BigInt>,
+    op: Box<dyn Fn(i64, i64) -> i64>,
+    arg: Option<i64>,
 }
 
 impl Operation {
-    fn new(func: impl Fn(BigInt, BigInt) -> BigInt + 'static, arg: Option<BigInt>) -> Self {
+    fn new(func: impl Fn(i64, i64) -> i64 + 'static, arg: Option<i64>) -> Self {
         Self {
             op: Box::new(func),
             arg,
         }
     }
 
-    fn call(&mut self, old: BigInt) -> BigInt {
+    fn call(&mut self, old: i64) -> i64 {
         (self.op)(old.clone(), self.arg.clone().unwrap_or(old))
     }
 }
@@ -39,7 +38,7 @@ fn parse_expression(s: &str) -> Operation {
     assert_eq!(parts[1], "=");
     assert_eq!(parts[2], "old");
 
-    let arg = parts[4].parse::<BigInt>().map_or(None, |i| Some(i));
+    let arg = parts[4].parse::<i64>().map_or(None, |i| Some(i));
 
     match parts[3] {
         "+" => Operation::new(|old, arg| old + arg, arg),
@@ -59,7 +58,7 @@ fn parse_monkey(lines: &[&str]) -> Monkey {
         .trim()
         .replace("Starting items: ", "")
         .split(", ")
-        .flat_map(&str::parse::<BigInt>)
+        .flat_map(&str::parse::<i64>)
         .collect::<Vec<_>>();
     let operation = parse_expression(lines[2].trim().replace("Operation: ", "").as_str());
     let test = lines[3]
@@ -90,35 +89,38 @@ fn parse_monkey(lines: &[&str]) -> Monkey {
 }
 
 fn simulate_round(monkeys: &mut Vec<RefCell<Monkey>>, simulate_worry: bool) {
+    let modulo = monkeys.iter().fold(1, |acc, x| acc * x.borrow().test);
     for i in 0..monkeys.len() {
-        simulate_monkey(monkeys, i, simulate_worry);
+        simulate_monkey(monkeys, i, simulate_worry, modulo);
     }
 }
 
-fn simulate_monkey(monkeys: &mut Vec<RefCell<Monkey>>, monkey: usize, simulate_worry: bool) {
+fn simulate_monkey(monkeys: &mut Vec<RefCell<Monkey>>, monkey: usize, simulate_worry: bool, modulo: i64) {    
     let mut current_monkey = monkeys[monkey].borrow_mut();
 
     let items = current_monkey.items.clone();
     current_monkey.items.clear();
 
-    for item in &items {
-        let mut new_value = current_monkey.operation.call(item.clone());
+    for mut item in items {
+        item = current_monkey.operation.call(item);
         if simulate_worry {
-            new_value = new_value / 3;
+            item = item / 3;
         }
+
+        item = item % modulo;
 
         current_monkey.inspections += 1;
 
-        if &new_value % current_monkey.test == BigInt::from(0) {
+        if &item % current_monkey.test == i64::from(0) {
             monkeys[current_monkey.test_pass]
                 .borrow_mut()
                 .items
-                .push(new_value.clone());
+                .push(item.clone());
         } else {
             monkeys[current_monkey.test_fail]
                 .borrow_mut()
                 .items
-                .push(new_value.clone());
+                .push(item.clone());
         }
     }
 }
@@ -135,7 +137,7 @@ fn main() {
             RefCell::new(parse_monkey(&lines))
         })
         .collect_vec();
-    for i in 0..10000 {
+    for _ in 0..10000 {
         simulate_round(&mut monkeys, false);
     }
     let monkey_business = monkeys

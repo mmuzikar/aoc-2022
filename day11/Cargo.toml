@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 iter_tools = "0.1.4"
-num-bigint = "0.4.3"
