@@ -130,9 +130,11 @@ impl HeightMap {
     }
 
     fn find_shortest_path(&self, start_post: Point) -> Option<usize> {
-        let mut pos = start_post;
-        let mut point_queue = VecDeque::<(Point, usize)>::new();
-        let mut visited = vec![pos];
+        let pos = start_post;
+        let mut point_queue = VecDeque::<(Point, usize)>::with_capacity(self.width * self.height);
+        let mut visited = Vec::with_capacity(self.width * self.height);
+
+        visited.push(pos);
 
         point_queue.push_back((pos, 0));
 
